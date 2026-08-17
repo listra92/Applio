@@ -3,7 +3,6 @@ import json
 import os
 import shutil
 import sys
-import traceback
 
 import gradio as gr
 import regex as re
@@ -214,12 +213,11 @@ def refresh_presets():
     return gr.update(choices=json_files)
 
 
-def output_path_fn(input_audio_path):
-    original_name_without_extension = os.path.basename(input_audio_path).rsplit(".", 1)[
-        0
-    ]
-    new_name = original_name_without_extension + "_output.wav"
-    output_path = os.path.join(os.path.dirname(input_audio_path), new_name)
+def output_path_fn(input_audio_path, model_file="", sid=0, f0_method="", f0_up_key=0):
+    model_file = os.path.basename(model_file).rsplit(".", 1)[0]
+    original_name_without_extension = os.path.basename(input_audio_path).rsplit(".", 1)[0]
+    new_name = f"{original_name_without_extension}-{model_file}-{sid}-{f0_method}{f0_up_key:+d}.wav"
+    output_path = os.path.join(os.path.dirname(input_audio_path), "audio-others", new_name)
     return output_path
 
 
@@ -570,7 +568,16 @@ def inference_tab():
                     allow_custom_value=True,
                 )
 
-        with gr.Accordion(i18n("Advanced Settings"), open=False):
+        convert_button1 = gr.Button(i18n("Convert"))
+
+        with gr.Row():
+            vc_output1 = gr.Textbox(
+                label=i18n("Output Information"),
+                info=i18n("The output information will be displayed here."),
+            )
+            vc_output2 = gr.Audio(label=i18n("Export Audio"))
+
+        with gr.Accordion(i18n("Advanced Settings"), open=True):
             with gr.Column():
                 clear_outputs_infer = gr.Button(
                     i18n("Clear Outputs (Deletes all audios in assets/audios)")
@@ -600,6 +607,15 @@ def inference_tab():
                     info=i18n("Select the speaker ID to use for the conversion."),
                     choices=get_speakers_id(model_file.value),
                     value=0,
+                    interactive=True,
+                )
+                if_ckpts = gr.Checkbox(
+                    label=i18n("Use all model checkpoints"),
+                    info=i18n(
+                        "Use all model checkpoints."
+                    ),
+                    visible=True,
+                    value=False,
                     interactive=True,
                 )
                 split_audio = gr.Checkbox(
@@ -1171,9 +1187,8 @@ def inference_tab():
             try:
                 return run_infer_script(*args)
             except Exception:
-                traceback.print_exc()
                 return (
-                    "An error occurred during audio conversion. Please check the console logs for more details.",
+                    "sdasda",
                     None,
                 )
 
@@ -1185,26 +1200,16 @@ def inference_tab():
             try:
                 return run_batch_infer_script(*args)
             except Exception:
-                traceback.print_exc()
-                return "An error occurred during audio batch conversion. Please check the console logs for more details."
+                return "sdasda"
 
         terms_checkbox = gr.Checkbox(
             label=i18n("I agree to the terms of use"),
             info=i18n(
                 "Please ensure compliance with the terms and conditions detailed in [this document](https://github.com/IAHispano/Applio/blob/main/TERMS_OF_USE.md) before proceeding with your inference."
             ),
-            value=False,
+            value=True,
             interactive=True,
         )
-
-        convert_button1 = gr.Button(i18n("Convert"))
-
-        with gr.Row():
-            vc_output1 = gr.Textbox(
-                label=i18n("Output Information"),
-                info=i18n("The output information will be displayed here."),
-            )
-            vc_output2 = gr.Audio(label=i18n("Export Audio"))
 
     # Batch inference tab
     with gr.Tab(i18n("Batch")):
@@ -1813,7 +1818,7 @@ def inference_tab():
             info=i18n(
                 "Please ensure compliance with the terms and conditions detailed in [this document](https://github.com/IAHispano/Applio/blob/main/TERMS_OF_USE.md) before proceeding with your inference."
             ),
-            value=False,
+            value=True,
             interactive=True,
         )
         convert_button_batch = gr.Button(i18n("Convert"))
@@ -2131,6 +2136,26 @@ def inference_tab():
         inputs=[clean_audio_batch],
         outputs=[clean_strength_batch],
     )
+    sid.change(
+        fn=output_path_fn,
+        inputs=[audio, model_file, sid, f0_method, pitch],
+        outputs=[output_path],
+    )
+    f0_method.change(
+        fn=output_path_fn,
+        inputs=[audio, model_file, sid, f0_method, pitch],
+        outputs=[output_path],
+    )
+    pitch.change(
+        fn=output_path_fn,
+        inputs=[audio, model_file, sid, f0_method, pitch],
+        outputs=[output_path],
+    )
+    model_file.change(
+        fn=output_path_fn,
+        inputs=[audio, model_file, sid, f0_method, pitch],
+        outputs=[output_path],
+    )
     refresh_button.click(
         fn=change_choices,
         inputs=[model_file],
@@ -2142,7 +2167,7 @@ def inference_tab():
     )
     audio.change(
         fn=output_path_fn,
-        inputs=[audio],
+        inputs=[audio, model_file, sid, f0_method, pitch],
         outputs=[output_path],
     )
     upload_audio.upload(
@@ -2262,6 +2287,7 @@ def inference_tab():
             delay_feedback,
             delay_mix,
             sid,
+            if_ckpts,
         ],
         outputs=[vc_output1, vc_output2],
     )
