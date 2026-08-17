@@ -58,11 +58,9 @@ sample_rate = int(sys.argv[8])
 save_only_latest = strtobool(sys.argv[9])
 save_every_weights = strtobool(sys.argv[10])
 cache_data_in_gpu = strtobool(sys.argv[11])
-overtraining_detector = strtobool(sys.argv[12])
-overtraining_threshold = int(sys.argv[13])
-cleanup = strtobool(sys.argv[14])
-vocoder = sys.argv[15]
-checkpointing = strtobool(sys.argv[16])
+cleanup = strtobool(sys.argv[12])
+vocoder = sys.argv[13]
+checkpointing = strtobool(sys.argv[14])
 # experimental settings
 randomized = True
 d_lr_coeff = 1.0
@@ -129,7 +127,6 @@ torch.backends.cudnn.benchmark = True
 
 global_step = 0
 last_loss_gen_all = 0
-overtrain_save_epoch = 0
 loss_gen_history = []
 smoothed_loss_gen_history = []
 loss_disc_history = []
@@ -186,7 +183,7 @@ def main():
     """
     Main function to start the training process.
     """
-    global training_file_path, last_loss_gen_all, smoothed_loss_gen_history, loss_gen_history, loss_disc_history, smoothed_loss_disc_history, overtrain_save_epoch, gpus
+    global training_file_path, last_loss_gen_all, smoothed_loss_gen_history, loss_gen_history, loss_disc_history, smoothed_loss_disc_history, gpus
 
     os.environ["MASTER_ADDR"] = "localhost"
     os.environ["MASTER_PORT"] = str(randint(20000, 55555))
@@ -273,22 +270,6 @@ def main():
                 )
         return [], [], [], []
 
-    def continue_overtrain_detector(training_file_path):
-        """
-        Continues the overtrain detector by loading the training history from a JSON file.
-
-        Args:
-            training_file_path (str): The file path of the JSON file containing the training history.
-        """
-        if overtraining_detector:
-            if os.path.exists(training_file_path):
-                (
-                    loss_disc_history,
-                    smoothed_loss_disc_history,
-                    loss_gen_history,
-                    smoothed_loss_gen_history,
-                ) = load_from_json(training_file_path)
-
     if cleanup:
         print("Removing files from the prior training attempt...")
 
@@ -317,7 +298,6 @@ def main():
 
         print("Cleanup done!")
 
-    continue_overtrain_detector(training_file_path)
     start()
 
 
@@ -988,16 +968,6 @@ def train_and_evaluate(
                 record
                 + f" | lowest_value={lowest_value_rounded} (epoch {lowest_value['epoch']} and step {lowest_value['step']})"
             )
-
-        if overtraining_detector:
-            remaining_epochs_gen = overtraining_threshold - consecutive_increases_gen
-            remaining_epochs_disc = (
-                overtraining_threshold * 2 - consecutive_increases_disc
-            )
-            record = (
-                record
-                + f" | Number of epochs remaining for overtraining: g/total: {remaining_epochs_gen} d/total: {remaining_epochs_disc} | smoothed_loss_gen={smoothed_value_gen:.3f} | smoothed_loss_disc={smoothed_value_disc:.3f}"
-            )
         print(record)
 
         # Save weights every N epochs
@@ -1104,26 +1074,6 @@ def train_and_evaluate(
 
         with torch.no_grad():
             torch.cuda.empty_cache()
-
-
-def check_overtraining(smoothed_loss_history, threshold, epsilon=0.004):
-    """
-    Checks for overtraining based on the smoothed loss history.
-
-    Args:
-        smoothed_loss_history (list): List of smoothed losses for each epoch.
-        threshold (int): Number of consecutive epochs with insignificant changes or increases to consider overtraining.
-        epsilon (float): The maximum change considered insignificant.
-    """
-    if len(smoothed_loss_history) < threshold + 1:
-        return False
-
-    for i in range(-threshold, -1):
-        if smoothed_loss_history[i + 1] > smoothed_loss_history[i]:
-            return True
-        if abs(smoothed_loss_history[i + 1] - smoothed_loss_history[i]) >= epsilon:
-            return False
-    return True
 
 
 def update_exponential_moving_average(
