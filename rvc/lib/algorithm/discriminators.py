@@ -26,18 +26,21 @@ class MultiPeriodDiscriminator(torch.nn.Module):
         use_spectral_norm: bool = False,
         checkpointing: bool = False,
         version: str = "v2",
+        periods = [],
+        resolutions = [],
     ):
         super().__init__()
 
-        if version == "v1":
-            periods = [2, 3, 5, 7, 11, 17]
-            resolutions = []
-        elif version == "v2":
-            periods = [2, 3, 5, 7, 11, 17, 23, 37]
-            resolutions = []
-        elif version == "v3":
-            periods = [2, 3, 5, 7, 11]
-            resolutions = [[1024, 120, 600], [2048, 240, 1200], [512, 50, 240]]
+        if periods == []:
+            if version == "v1":
+                periods = [2, 3, 5, 7, 11, 17]
+                resolutions = []
+            elif version == "v2":
+                periods = [2, 3, 5, 7, 11, 17, 23, 37]
+                resolutions = []
+            elif version == "v3":
+                periods = [2, 3, 5, 7, 11]
+                resolutions = [[1024, 120, 600], [2048, 240, 1200], [512, 50, 240]]
 
         self.checkpointing = checkpointing
         self.discriminators = torch.nn.ModuleList(
