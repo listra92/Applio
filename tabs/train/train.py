@@ -337,7 +337,7 @@ def train_tab():
                     label=i18n("Sampling Rate"),
                     info=i18n("The sampling rate of the audio files."),
                     choices=["32000", "40000", "48000"],
-                    value="40000",
+                    value="32000",
                     interactive=True,
                 )
                 vocoder = gr.Radio(
@@ -352,14 +352,14 @@ def train_tab():
                 )
         with gr.Accordion(
             i18n("Advanced Settings"),
-            open=False,
+            open=True,
         ):
             with gr.Row():
                 with gr.Column():
                     cpu_cores = gr.Slider(
                         1,
                         min(cpu_count(), 32),  # max 32 parallel processes
-                        min(cpu_count(), 32),
+                        1,
                         step=1,
                         label=i18n("CPU Cores"),
                         info=i18n(
@@ -415,14 +415,14 @@ def train_tab():
                 )
         refresh = gr.Button(i18n("Refresh"))
 
-        with gr.Accordion(i18n("Advanced Settings"), open=False):
+        with gr.Accordion(i18n("Advanced Settings"), open=True):
             cut_preprocess = gr.Radio(
                 label=i18n("Audio cutting"),
                 info=i18n(
                     "Audio file slicing method: Select 'Skip' if the files are already pre-sliced, 'Simple' if excessive silence has already been removed from the files, or 'Automatic' for automatic silence detection and slicing around it."
                 ),
                 choices=["Skip", "Simple", "Automatic"],
-                value="Automatic",
+                value="Simple",
                 interactive=True,
             )
             with gr.Row():
@@ -626,7 +626,7 @@ def train_tab():
             save_every_epoch = gr.Slider(
                 1,
                 100,
-                10,
+                1,
                 step=1,
                 label=i18n("Save Every Epoch"),
                 info=i18n("Determine at how many epochs the model will saved at."),
@@ -635,7 +635,7 @@ def train_tab():
             total_epoch = gr.Slider(
                 1,
                 10000,
-                200,
+                300,
                 step=1,
                 label=i18n("Total Epoch"),
                 info=i18n(
@@ -643,7 +643,7 @@ def train_tab():
                 ),
                 interactive=True,
             )
-        with gr.Accordion(i18n("Advanced Settings"), open=False):
+        with gr.Accordion(i18n("Advanced Settings"), open=True):
             with gr.Row():
                 with gr.Column():
                     save_only_latest = gr.Checkbox(
@@ -695,25 +695,17 @@ def train_tab():
                         value=auto_enable_checkpointing(),
                         interactive=True,
                     )
-                    shutdown_check = gr.Checkbox(
-                        label=i18n("Shutdown after finishing"),
-                        info=i18n(
-                            "Automatically shut down computer when training is finished."
-                        ),
-                        value=False,
-                        interactive=True,
-                    )
             with gr.Row():
                 custom_pretrained = gr.Checkbox(
                     label=i18n("Custom Pretrained"),
                     info=i18n(
                         "Utilizing custom pretrained models can lead to superior results, as selecting the most suitable pretrained models tailored to the specific use case can significantly enhance performance."
                     ),
-                    value=False,
+                    value=True,
                     interactive=True,
                 )
             with gr.Row():
-                with gr.Column(visible=False) as pretrained_custom_settings:
+                with gr.Column(visible=True) as pretrained_custom_settings:
                     with gr.Accordion(i18n("Pretrained Custom Settings")):
                         upload_pretrained = gr.File(
                             label=i18n("Upload Pretrained Model"),
@@ -748,7 +740,7 @@ def train_tab():
                     "KMeans is a clustering algorithm that divides the dataset into K clusters. This setting is particularly useful for large datasets."
                 ),
                 choices=["Auto", "Faiss", "KMeans"],
-                value="Auto",
+                value="Faiss",
                 interactive=True,
             )
 
@@ -764,7 +756,7 @@ def train_tab():
             info=i18n(
                 "Please ensure compliance with the terms and conditions detailed in [this document](https://github.com/IAHispano/Applio/blob/main/TERMS_OF_USE.md) before proceeding with your training."
             ),
-            value=False,
+            value=True,
             interactive=True,
         )
         train_output_info = gr.Textbox(
@@ -1003,7 +995,6 @@ def train_tab():
                     d_pretrained_path,
                     vocoder,
                     checkpointing,
-                    shutdown_check,
                 ],
                 outputs=[train_output_info],
             )
