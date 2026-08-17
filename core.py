@@ -51,6 +51,13 @@ def get_config():
     return Config()
 
 
+def output_path_fn(input_audio_path, model_file="", sid=0, f0_method="", f0_up_key=0):
+    model_file = os.path.basename(model_file).rsplit(".", 1)[0]
+    original_name_without_extension = os.path.basename(input_audio_path).rsplit(".", 1)[0]
+    new_name = f"{original_name_without_extension}-{model_file}-{sid}-{f0_method}{f0_up_key:+d}.wav"
+    output_path = os.path.join(os.path.dirname(input_audio_path), "audio-others", new_name)
+    return output_path
+
 # Infer
 def run_infer_script(
     pitch: int,
@@ -112,70 +119,141 @@ def run_infer_script(
     delay_feedback: float = 0.0,
     delay_mix: float = 0.5,
     sid: int = 0,
+    if_ckpts: bool = False,
 ):
-    kwargs = {
-        "audio_input_path": input_path,
-        "audio_output_path": output_path,
-        "model_path": pth_path,
-        "index_path": index_path,
-        "volume_envelope": volume_envelope,
-        "pitch": pitch,
-        "index_rate": index_rate,
-        "protect": protect,
-        "f0_method": f0_method,
-        "split_audio": split_audio,
-        "f0_autotune": f0_autotune,
-        "f0_autotune_strength": f0_autotune_strength,
-        "proposed_pitch": proposed_pitch,
-        "proposed_pitch_threshold": proposed_pitch_threshold,
-        "clean_audio": clean_audio,
-        "clean_strength": clean_strength,
-        "export_format": export_format,
-        "embedder_model": embedder_model,
-        "embedder_model_custom": embedder_model_custom,
-        "post_process": post_process,
-        "formant_shifting": formant_shifting,
-        "formant_qfrency": formant_qfrency,
-        "formant_timbre": formant_timbre,
-        "reverb": reverb,
-        "pitch_shift": pitch_shift,
-        "limiter": limiter,
-        "gain": gain,
-        "distortion": distortion,
-        "chorus": chorus,
-        "bitcrush": bitcrush,
-        "clipping": clipping,
-        "compressor": compressor,
-        "delay": delay,
-        "reverb_room_size": reverb_room_size,
-        "reverb_damping": reverb_damping,
-        "reverb_wet_level": reverb_wet_gain,
-        "reverb_dry_level": reverb_dry_gain,
-        "reverb_width": reverb_width,
-        "reverb_freeze_mode": reverb_freeze_mode,
-        "pitch_shift_semitones": pitch_shift_semitones,
-        "limiter_threshold": limiter_threshold,
-        "limiter_release": limiter_release_time,
-        "gain_db": gain_db,
-        "distortion_gain": distortion_gain,
-        "chorus_rate": chorus_rate,
-        "chorus_depth": chorus_depth,
-        "chorus_delay": chorus_center_delay,
-        "chorus_feedback": chorus_feedback,
-        "chorus_mix": chorus_mix,
-        "bitcrush_bit_depth": bitcrush_bit_depth,
-        "clipping_threshold": clipping_threshold,
-        "compressor_threshold": compressor_threshold,
-        "compressor_ratio": compressor_ratio,
-        "compressor_attack": compressor_attack,
-        "compressor_release": compressor_release,
-        "delay_seconds": delay_seconds,
-        "delay_feedback": delay_feedback,
-        "delay_mix": delay_mix,
-        "sid": sid,
-    }
-    infer_pipeline = import_voice_converter()
-    infer_pipeline.convert_audio(**kwargs)
+    if not if_ckpts:
+        kwargs = {
+            "audio_input_path": input_path,
+            "audio_output_path": output_path,
+            "model_path": pth_path,
+            "index_path": index_path,
+            "volume_envelope": volume_envelope,
+            "pitch": pitch,
+            "index_rate": index_rate,
+            "protect": protect,
+            "f0_method": f0_method,
+            "split_audio": split_audio,
+            "f0_autotune": f0_autotune,
+            "f0_autotune_strength": f0_autotune_strength,
+            "proposed_pitch": proposed_pitch,
+            "proposed_pitch_threshold": proposed_pitch_threshold,
+            "clean_audio": clean_audio,
+            "clean_strength": clean_strength,
+            "export_format": export_format,
+            "embedder_model": embedder_model,
+            "embedder_model_custom": embedder_model_custom,
+            "post_process": post_process,
+            "formant_shifting": formant_shifting,
+            "formant_qfrency": formant_qfrency,
+            "formant_timbre": formant_timbre,
+            "reverb": reverb,
+            "pitch_shift": pitch_shift,
+            "limiter": limiter,
+            "gain": gain,
+            "distortion": distortion,
+            "chorus": chorus,
+            "bitcrush": bitcrush,
+            "clipping": clipping,
+            "compressor": compressor,
+            "delay": delay,
+            "reverb_room_size": reverb_room_size,
+            "reverb_damping": reverb_damping,
+            "reverb_wet_level": reverb_wet_gain,
+            "reverb_dry_level": reverb_dry_gain,
+            "reverb_width": reverb_width,
+            "reverb_freeze_mode": reverb_freeze_mode,
+            "pitch_shift_semitones": pitch_shift_semitones,
+            "limiter_threshold": limiter_threshold,
+            "limiter_release": limiter_release_time,
+            "gain_db": gain_db,
+            "distortion_gain": distortion_gain,
+            "chorus_rate": chorus_rate,
+            "chorus_depth": chorus_depth,
+            "chorus_delay": chorus_center_delay,
+            "chorus_feedback": chorus_feedback,
+            "chorus_mix": chorus_mix,
+            "bitcrush_bit_depth": bitcrush_bit_depth,
+            "clipping_threshold": clipping_threshold,
+            "compressor_threshold": compressor_threshold,
+            "compressor_ratio": compressor_ratio,
+            "compressor_attack": compressor_attack,
+            "compressor_release": compressor_release,
+            "delay_seconds": delay_seconds,
+            "delay_feedback": delay_feedback,
+            "delay_mix": delay_mix,
+            "sid": sid,
+        }
+        infer_pipeline = import_voice_converter()
+        infer_pipeline.convert_audio(**kwargs)
+    else:
+        weight_dir = os.path.dirname(pth_path)
+        weight_dirs = sorted(os.listdir(weight_dir))
+        for ckpt in weight_dirs:
+            if ckpt.endswith(".pth"):
+                kwargs = {
+                    "audio_input_path": input_path,
+                    "audio_output_path": output_path_fn(input_path, os.path.join(weight_dir, ckpt), sid, f0_method, pitch),
+                    "model_path": os.path.join(weight_dir, ckpt),
+                    "index_path": index_path,
+                    "volume_envelope": volume_envelope,
+                    "pitch": pitch,
+                    "index_rate": index_rate,
+                    "protect": protect,
+                    "f0_method": f0_method,
+                    "split_audio": split_audio,
+                    "f0_autotune": f0_autotune,
+                    "f0_autotune_strength": f0_autotune_strength,
+                    "proposed_pitch": proposed_pitch,
+                    "proposed_pitch_threshold": proposed_pitch_threshold,
+                    "clean_audio": clean_audio,
+                    "clean_strength": clean_strength,
+                    "export_format": export_format,
+                    "embedder_model": embedder_model,
+                    "embedder_model_custom": embedder_model_custom,
+                    "post_process": post_process,
+                    "formant_shifting": formant_shifting,
+                    "formant_qfrency": formant_qfrency,
+                    "formant_timbre": formant_timbre,
+                    "reverb": reverb,
+                    "pitch_shift": pitch_shift,
+                    "limiter": limiter,
+                    "gain": gain,
+                    "distortion": distortion,
+                    "chorus": chorus,
+                    "bitcrush": bitcrush,
+                    "clipping": clipping,
+                    "compressor": compressor,
+                    "delay": delay,
+                    "reverb_room_size": reverb_room_size,
+                    "reverb_damping": reverb_damping,
+                    "reverb_wet_level": reverb_wet_gain,
+                    "reverb_dry_level": reverb_dry_gain,
+                    "reverb_width": reverb_width,
+                    "reverb_freeze_mode": reverb_freeze_mode,
+                    "pitch_shift_semitones": pitch_shift_semitones,
+                    "limiter_threshold": limiter_threshold,
+                    "limiter_release": limiter_release_time,
+                    "gain_db": gain_db,
+                    "distortion_gain": distortion_gain,
+                    "chorus_rate": chorus_rate,
+                    "chorus_depth": chorus_depth,
+                    "chorus_delay": chorus_center_delay,
+                    "chorus_feedback": chorus_feedback,
+                    "chorus_mix": chorus_mix,
+                    "bitcrush_bit_depth": bitcrush_bit_depth,
+                    "clipping_threshold": clipping_threshold,
+                    "compressor_threshold": compressor_threshold,
+                    "compressor_ratio": compressor_ratio,
+                    "compressor_attack": compressor_attack,
+                    "compressor_release": compressor_release,
+                    "delay_seconds": delay_seconds,
+                    "delay_feedback": delay_feedback,
+                    "delay_mix": delay_mix,
+                    "sid": sid,
+                }
+                print(kwargs["model_path"])
+                infer_pipeline = import_voice_converter()
+                infer_pipeline.convert_audio(**kwargs)
     return f"File {input_path} inferred successfully.", output_path.replace(
         ".wav", f".{export_format.lower()}"
     )
@@ -485,55 +563,6 @@ def run_extract_script(
     return f"Model {model_name} extracted successfully."
 
 
-def shutdown_after_training():
-    os_name = sys.platform
-    shutdown_time = None
-
-    # Windows
-    if os_name == "win32":
-        delay_seconds = 300
-        shutdown_time = datetime.now() + timedelta(seconds=delay_seconds)
-        os.system(f"shutdown /s /t {delay_seconds}")
-
-    # MacOS
-    elif os_name == "darwin":
-        shutdown_time = datetime.now()
-        os.system("osascript -e 'tell app \"System Events\" to shut down'")
-
-    # Linux
-    elif os_name.startswith("linux"):
-        delay_minutes = 5
-        shutdown_time = datetime.now() + timedelta(minutes=delay_minutes)
-        os.system(f"shutdown -h +{delay_minutes}")
-
-    # Unknown
-    else:
-        print("Unsupported OS")
-        return os_name, None
-
-    return os_name, shutdown_time
-
-
-def append_data_shutdown_log(
-    model_name, total_epoch, batch_size, sample_rate, gpu, shutdown_time, os_name
-):
-    log_file = "training_shutdown_log.txt"
-
-    log_entry = (
-        f"[{datetime.now()}] "
-        f"Model: {model_name} | "
-        f"Epochs: {total_epoch} | "
-        f"Batch: {batch_size} | "
-        f"SR: {sample_rate} | "
-        f"GPU: {gpu} | "
-        f"OS: {os_name} | "
-        f"Shutdown at: {shutdown_time}\n"
-    )
-
-    with open(log_file, "a", encoding="utf-8") as f:
-        f.write(log_entry)
-
-
 # Train
 def run_train_script(
     model_name: str,
@@ -553,7 +582,6 @@ def run_train_script(
     d_pretrained_path: str = None,
     vocoder: str = "HiFi-GAN",
     checkpointing: bool = False,
-    shutdown_check: bool = False,
 ):
     if pretrained == True:
         from rvc.lib.tools.pretrained_selector import pretrained_selector
@@ -598,25 +626,6 @@ def run_train_script(
         return f"Training failed for model {model_name}. Please check the console logs for more details."
 
     run_index_script(model_name, index_algorithm)
-
-    if shutdown_check:
-        os_name, shutdown_datetime = shutdown_after_training()
-
-        append_data_shutdown_log(
-            model_name=model_name,
-            total_epoch=total_epoch,
-            batch_size=batch_size,
-            sample_rate=sample_rate,
-            gpu=gpu,
-            shutdown_time=shutdown_datetime,
-            os_name=os_name,
-        )
-
-        print(
-            f"Model {model_name} trained successfully. Shutdown scheduled at {shutdown_datetime}"
-        )
-        return f"Model {model_name} trained successfully. Shutdown scheduled at {shutdown_datetime}"
-
     return f"Model {model_name} trained successfully."
 
 
