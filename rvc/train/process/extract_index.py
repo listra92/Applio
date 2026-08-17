@@ -46,7 +46,7 @@ else:
     np.random.shuffle(big_npy_idx)
     big_npy = big_npy[big_npy_idx]
 
-    if big_npy.shape[0] > 2e5 or index_algorithm == "KMeans":
+    if index_algorithm == "KMeans":
         big_npy = (
             MiniBatchKMeans(
                 n_clusters=10000,
